@@ -8,6 +8,12 @@
 	const currentIndex = writable(0);
 	const showError = writable(false);
 
+	const roundStarted = writable(false); // false artinya user belum mulai input
+
+	const startTime = writable<number | null>(null);
+	const elapsed = writable<number>(0);
+	let intervalId: number | null = null;
+
 	const numbersForBtn: (number | string)[] = [
 		'%',
 		'/',
@@ -34,11 +40,24 @@
 		target.set(newTarget);
 		input.set([]);
 		currentIndex.set(0);
+		roundStarted.set(false);
 	}
 
 	function handleInput(value: number): void {
 		const currIndex = get(currentIndex);
 		const currTarget = get(target);
+
+		// Mulai timer hanya saat input pertama
+		if (!get(roundStarted)) {
+			roundStarted.set(true);
+			startTime.set(Date.now());
+
+			intervalId = setInterval(() => {
+				const now = Date.now();
+				const start = get(startTime);
+				if (start) elapsed.set((now - start) / 1000);
+			}, 100);
+		}
 
 		if (currIndex >= 10) return;
 
@@ -47,11 +66,20 @@
 			currentIndex.update((i) => {
 				const next = i + 1;
 
-				// setelah update index, cek apakah selesai
+				// ✅ jika selesai
 				if (next === 10) {
+					// Stop timer
+					if (intervalId) clearInterval(intervalId);
+					intervalId = null;
+					startTime.set(null);
+
+					// reset round flag
+					roundStarted.set(false);
+
+					// generate angka baru
 					setTimeout(() => {
-						generateTarget();
-					}, 1000);
+						generateTarget(); // timer tetap mati
+					}, 300);
 				}
 
 				return next;
@@ -78,6 +106,7 @@
 <div
 	class="relative container flex h-screen w-screen flex-col items-center justify-center gap-5 overflow-hidden bg-neutral-800"
 >
+	<h1 class="text-3xl text-white">{$elapsed.toFixed(2)}s</h1>
 	<h1 class="flex gap-1 text-3xl text-white lg:gap-2">
 		{#each $target as num, i}
 			<span
